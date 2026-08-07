@@ -1,0 +1,184 @@
+#
+# Weather embedding ingestion job
+#
+# Deploy:
+#
+#   databricks bundle deploy -t dev
+#
+#
+# Run manually:
+#
+#   databricks bundle run ingest_weather_embeddings_job -t dev
+#
+#
+
+resources:
+
+
+  jobs:
+
+
+    ingest_weather_embeddings_job:
+
+
+      name: "[${bundle.target}] Ingest Weather Embeddings"
+
+
+
+
+      # --------------------------------------------------------------
+      # Schedule
+      #
+      # Runs daily after weather documents have accumulated.
+      #
+      # --------------------------------------------------------------
+
+      schedule:
+
+
+        quartz_cron_expression: "0 30 6 * * ?"
+
+
+        timezone_id: "UTC"
+
+
+        pause_status: PAUSED
+
+        #
+        # Change to UNPAUSED after validation.
+        #
+
+
+
+
+
+      email_notifications:
+
+
+        on_failure:
+
+
+          - ${workspace.current_user.userName}
+
+
+
+
+
+      max_concurrent_runs: 1
+
+
+
+
+
+
+      # --------------------------------------------------------------
+      # Compute
+      # --------------------------------------------------------------
+
+      job_clusters:
+
+
+        - job_cluster_key: weather_embedding_cluster
+
+
+          new_cluster:
+
+
+            spark_version: "15.4.x-scala2.12"
+
+
+            node_type_id: "i3.xlarge"
+
+
+            num_workers: 2
+
+
+            data_security_mode: SINGLE_USER
+
+
+
+
+
+
+      # --------------------------------------------------------------
+      # Task
+      # --------------------------------------------------------------
+
+      tasks:
+
+
+        - task_key: ingest_weather_embeddings
+
+
+          job_cluster_key: weather_embedding_cluster
+
+
+
+          notebook_task:
+
+
+            notebook_path: ../notebooks/ingest_weather_embeddings.py
+
+
+
+            base_parameters:
+
+
+
+              # ------------------------------------------------------
+              # Source
+              # ------------------------------------------------------
+
+              weather_table_name: "weather.weather_documents"
+
+
+
+
+              # ------------------------------------------------------
+              # Destination tables
+              # ------------------------------------------------------
+
+              embeddings_table_name: "weather.weather_embeddings"
+
+
+              alert_embeddings_table_name: "weather.weather_alert_embeddings"
+
+
+              forecast_embeddings_table_name: "weather.weather_forecast_embeddings"
+
+
+
+
+
+              # ------------------------------------------------------
+              # Embedding model
+              # ------------------------------------------------------
+
+              embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+
+
+
+
+
+              # ------------------------------------------------------
+              # Chunking
+              # ------------------------------------------------------
+
+              chunk_size: "800"
+
+
+              chunk_overlap: "100"
+
+
+
+
+
+              # ------------------------------------------------------
+              # Processing behavior
+              # ------------------------------------------------------
+
+              max_documents_per_run: "5000"
+
+
+              incremental_mode: "true"
+

@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>
+        Databricks Weather Service
+    </title>
+
+
+    <style>
+
+        body {
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background:
+                #f5f7fa;
+
+            margin:
+                0;
+
+            color:
+                #1f2937;
+        }
+
+
+        header {
+
+            background:
+                #ff3621;
+
+            color:
+                white;
+
+            padding:
+                20px 40px;
+
+        }
+
+
+        header h1 {
+
+            margin:
+                0;
+
+            font-size:
+                28px;
+
+        }
+
+
+        header p {
+
+            margin-top:
+                8px;
+
+            opacity:
+                0.9;
+
+        }
+
+
+        .container {
+
+            padding:
+                30px;
+
+            max-width:
+                1200px;
+
+            margin:
+                auto;
+
+        }
+
+
+        .card {
+
+            background:
+                white;
+
+            border-radius:
+                10px;
+
+            padding:
+                25px;
+
+            margin-bottom:
+                25px;
+
+            box-shadow:
+                0 2px 8px rgba(0,0,0,.08);
+
+        }
+
+
+        h2 {
+
+            margin-top:
+                0;
+
+            color:
+                #111827;
+
+        }
+
+
+        textarea {
+
+            width:
+                100%;
+
+            min-height:
+                120px;
+
+            border:
+                1px solid #d1d5db;
+
+            border-radius:
+                6px;
+
+            padding:
+                12px;
+
+            font-size:
+                14px;
+
+            font-family:
+                monospace;
+
+        }
+
+
+        button {
+
+            background:
+                #ff3621;
+
+            color:
+                white;
+
+            border:
+                none;
+
+            padding:
+                12px 22px;
+
+            border-radius:
+                6px;
+
+            cursor:
+                pointer;
+
+            font-size:
+                15px;
+
+            margin-top:
+                15px;
+
+        }
+
+
+        button:hover {
+
+            background:
+                #d92d1c;
+
+        }
+
+
+        .status {
+
+            margin-top:
+                15px;
+
+            padding:
+                12px;
+
+            border-radius:
+                6px;
+
+            background:
+                #eef2ff;
+
+        }
+
+
+        table {
+
+            width:
+                100%;
+
+            border-collapse:
+                collapse;
+
+        }
+
+
+        th {
+
+            background:
+                #111827;
+
+            color:
+                white;
+
+            padding:
+                10px;
+
+            text-align:
+                left;
+
+        }
+
+
+        td {
+
+            padding:
+                10px;
+
+            border-bottom:
+                1px solid #e5e7eb;
+
+            vertical-align:
+                top;
+
+        }
+
+
+        .alert {
+
+            color:
+                #b91c1c;
+
+            font-weight:
+                bold;
+
+        }
+
+
+        .forecast {
+
+            color:
+                #2563eb;
+
+            font-weight:
+                bold;
+
+        }
+
+
+        .small {
+
+            font-size:
+                12px;
+
+            color:
+                #6b7280;
+
+        }
+
+
+        pre {
+
+            white-space:
+                pre-wrap;
+
+            font-size:
+                13px;
+
+        }
+
+
+    </style>
+
+
+</head>
+
+
+<body>
+
+
+<header>
+
+    <h1>
+        🌦 Databricks Weather Service
+    </h1>
+
+    <p>
+        National Weather Service ingestion,
+        Lakebase storage, and RAG-ready weather intelligence
+    </p>
+
+</header>
+
+
+
+<div class="container">
+
+
+
+    <div class="card">
+
+        <h2>
+            Synchronize Weather Data
+        </h2>
+
+
+        <p>
+            Enter locations as city/state values or latitude/longitude JSON.
+        </p>
+
+
+        <textarea id="locations">
+
+[
+  "Chicago, IL",
+  "Austin, TX",
+  {
+    "lat": 37.7749,
+    "lon": -122.4194
+  }
+]
+
+        </textarea>
+
+
+        <br>
+
+
+        <button onclick="syncWeather()">
+
+            Sync Weather
+
+        </button>
+
+
+        <div id="syncStatus" class="status">
+
+            Ready.
+
+        </div>
+
+
+    </div>
+
+
+
+
+
+    <div class="card">
+
+
+        <h2>
+            Weather Documents
+        </h2>
+
+
+        <button onclick="loadDocuments()">
+
+            Refresh Documents
+
+        </button>
+
+
+        <br><br>
+
+
+        <table>
+
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Type
+                    </th>
+
+                    <th>
+                        Location
+                    </th>
+
+                    <th>
+                        Headline
+                    </th>
+
+                    <th>
+                        Narrative
+                    </th>
+
+                    <th>
+                        Synced
+                    </th>
+
+                </tr>
+
+
+            </thead>
+
+
+            <tbody id="documents">
+
+            </tbody>
+
+
+        </table>
+
+
+    </div>
+
+
+
+</div>
+
+
+
+
+
+<script>
+
+
+async function syncWeather() {
+
+
+    const status =
+        document.getElementById(
+            "syncStatus"
+        );
+
+
+    status.innerText =
+        "Synchronizing weather data...";
+
+
+
+    try {
+
+
+        const locations =
+            JSON.parse(
+                document.getElementById(
+                    "locations"
+                ).value
+            );
+
+
+
+        const response =
+            await fetch(
+                "/weather/sync",
+                {
+
+                    method:
+                        "POST",
+
+                    headers:
+                    {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+
+                    body:
+                        JSON.stringify(
+                        {
+                            locations:
+                                locations,
+
+                            limit:
+                                50
+                        })
+
+                }
+            );
+
+
+
+        const data =
+            await response.json();
+
+
+
+        status.innerHTML =
+            `
+            <b>Completed</b><br>
+            Documents synced:
+            ${data.synced}
+            `;
+
+
+
+        loadDocuments();
+
+
+
+    }
+
+    catch(error) {
+
+
+        status.innerHTML =
+            `
+            <b>Error:</b>
+            ${error}
+            `;
+
+    }
+
+
+}
+
+
+
+
+
+async function loadDocuments() {
+
+
+    const response =
+        await fetch(
+            "/weather/documents?limit=100"
+        );
+
+
+    const documents =
+        await response.json();
+
+
+
+    const tbody =
+        document.getElementById(
+            "documents"
+        );
+
+
+    tbody.innerHTML =
+        "";
+
+
+
+    documents.forEach(
+        doc => {
+
+
+            const row =
+                document.createElement(
+                    "tr"
+                );
+
+
+
+            const typeClass =
+                doc.source_type === "alert"
+                ?
+                "alert"
+                :
+                "forecast";
+
+
+
+            row.innerHTML =
+            `
+
+            <td class="${typeClass}">
+                ${doc.source_type}
+            </td>
+
+
+            <td>
+                ${doc.location}
+            </td>
+
+
+            <td>
+                ${doc.headline || ""}
+            </td>
+
+
+            <td>
+
+                ${doc.narrative_text || ""}
+
+            </td>
+
+
+            <td class="small">
+
+                ${doc.synced_at || ""}
+
+            </td>
+
+            `;
+
+
+
+            tbody.appendChild(
+                row
+            );
+
+
+        }
+    );
+
+
+}
+
+
+
+
+
+window.onload =
+    function() {
+
+        loadDocuments();
+
+    };
+
+
+</script>
+
+
+</body>
+
+</html>
+
