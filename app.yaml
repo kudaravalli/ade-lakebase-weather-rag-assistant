@@ -1,0 +1,107 @@
+name: ade-lakebase-weather-rag-assistant
+
+
+# ----------------------------------------------------------------------
+# Application startup command
+#
+# Databricks Apps launches this command.
+#
+# Gunicorn is used instead of Flask development server.
+#
+# ----------------------------------------------------------------------
+
+command:
+
+  - gunicorn
+
+  - --workers
+  - "2"
+
+  - --threads
+  - "4"
+
+  - --timeout
+  - "120"
+
+  - -b
+  - 0.0.0.0:8000
+
+  - app:app
+
+
+
+# ----------------------------------------------------------------------
+# Environment variables
+# ----------------------------------------------------------------------
+
+env:
+
+
+  # --------------------------------------------------------------------
+  # Lakebase tables
+  # --------------------------------------------------------------------
+
+  - name: WEATHER_TABLE_NAME
+    value: weather_documents
+
+
+  - name: LOCATION_CACHE_TABLE_NAME
+    value: location_cache
+
+
+
+  # --------------------------------------------------------------------
+  # Default locations
+  #
+  # Used when POST /weather/sync does not provide locations.
+  #
+  # Supports:
+  #
+  #   "City, State"
+  #
+  #   {
+  #       "lat": latitude,
+  #       "lon": longitude
+  #   }
+  #
+  # --------------------------------------------------------------------
+
+  - name: WEATHER_LOCATIONS_JSON
+
+    value: >
+      [
+        "Chicago, IL",
+        "Austin, TX",
+        {
+          "lat": 37.7749,
+          "lon": -122.4194
+        },
+        {
+          "lat": 40.7128,
+          "lon": -74.0060
+        }
+      ]
+
+
+
+  # --------------------------------------------------------------------
+  # NWS API identification
+  #
+  # Required by National Weather Service API usage policy.
+  #
+  # --------------------------------------------------------------------
+
+  - name: NWS_USER_AGENT
+
+    value: "ade-lakebase-weather-rag-assistant"
+
+
+
+  # --------------------------------------------------------------------
+  # Python runtime behavior
+  # --------------------------------------------------------------------
+
+  - name: PYTHONUNBUFFERED
+
+    value: "1"
+

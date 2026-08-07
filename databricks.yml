@@ -1,0 +1,175 @@
+bundle:
+
+  name: ade-lakebase-weather-rag-assistant
+
+
+
+# ----------------------------------------------------------------------
+# Deployment targets
+# ----------------------------------------------------------------------
+
+targets:
+
+
+  dev:
+
+    mode: development
+
+    default: true
+
+
+    workspace:
+
+      host: https://<your-dev-workspace-url>
+
+
+
+  prod:
+
+    mode: production
+
+
+    workspace:
+
+      host: https://<your-prod-workspace-url>
+
+
+
+
+
+# ----------------------------------------------------------------------
+# Databricks App Resource
+# ----------------------------------------------------------------------
+
+resources:
+
+
+  apps:
+
+
+    weather_app:
+
+
+      name: "[${bundle.target}] ade-lakebase-weather-rag-assistant"
+
+
+
+      source_code_path: .
+
+
+
+      config:
+
+
+        command:
+
+          - gunicorn
+
+          - --workers
+          - "2"
+
+          - --threads
+          - "4"
+
+          - --timeout
+          - "120"
+
+          - -b
+          - 0.0.0.0:8000
+
+          - app:app
+
+
+
+      env:
+
+
+        - name: WEATHER_TABLE_NAME
+
+          value: weather_documents
+
+
+
+        - name: LOCATION_CACHE_TABLE_NAME
+
+          value: location_cache
+
+
+
+        - name: WEATHER_LOCATIONS_JSON
+
+          value: >
+
+            [
+
+              "Chicago, IL",
+
+              "Austin, TX",
+
+              {
+
+                "lat": 37.7749,
+
+                "lon": -122.4194
+
+              }
+
+            ]
+
+
+
+        - name: NWS_USER_AGENT
+
+          value: ade-lakebase-weather-rag-assistant
+
+
+
+        - name: PYTHONUNBUFFERED
+
+          value: "1"
+
+
+
+
+
+# ----------------------------------------------------------------------
+# Jobs
+#
+# These files are deployed as part of the bundle.
+#
+# ----------------------------------------------------------------------
+
+include:
+
+
+  - resources/*.yml
+
+
+
+# ----------------------------------------------------------------------
+# Repository synchronization
+# ----------------------------------------------------------------------
+
+sync:
+
+
+  include:
+
+
+    - app.py
+
+    - app.yaml
+
+    - lakebase.py
+
+    - weather_client.py
+
+    - weather_sync.py
+
+    - weather_schema.py
+
+    - requirements.txt
+
+    - notebooks/**
+
+    - templates/**

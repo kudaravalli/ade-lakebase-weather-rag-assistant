@@ -1,0 +1,168 @@
+#
+# Weather document synchronization job
+#
+# Deploy:
+#
+#   databricks bundle deploy -t dev
+#
+#
+# Run manually:
+#
+#   databricks bundle run sync_weather_documents_job -t dev
+#
+#
+
+
+resources:
+
+
+  jobs:
+
+
+    sync_weather_documents_job:
+
+
+      name: "[${bundle.target}] Sync Weather Documents"
+
+
+
+      # --------------------------------------------------------------
+      # Schedule
+      #
+      # Runs every 15 minutes.
+      #
+      # Weather alerts can change quickly, so this is more frequent
+      # than the embedding pipeline.
+      #
+      # --------------------------------------------------------------
+
+      schedule:
+
+        quartz_cron_expression: "0 */15 * * * ?"
+
+        timezone_id: "UTC"
+
+        pause_status: PAUSED
+        #
+        # Change to UNPAUSED after validation.
+        #
+
+
+
+      email_notifications:
+
+        on_failure:
+
+          - ${workspace.current_user.userName}
+
+
+
+      max_concurrent_runs: 1
+
+
+
+
+
+      # --------------------------------------------------------------
+      # Compute
+      # --------------------------------------------------------------
+
+      job_clusters:
+
+
+        - job_cluster_key: weather_sync_cluster
+
+
+          new_cluster:
+
+
+            spark_version: "15.4.x-scala2.12"
+
+
+            node_type_id: "i3.xlarge"
+
+
+            num_workers: 1
+
+
+            data_security_mode: SINGLE_USER
+
+
+
+
+
+
+      # --------------------------------------------------------------
+      # Task
+      # --------------------------------------------------------------
+
+      tasks:
+
+
+        - task_key: sync_weather_documents
+
+
+          job_cluster_key: weather_sync_cluster
+
+
+
+          notebook_task:
+
+
+            notebook_path: ../notebooks/sync_weather_documents.py
+
+
+
+            base_parameters:
+
+
+
+              # Lakebase destination
+
+              weather_table_name: "weather.weather_documents"
+
+
+
+              location_cache_table_name: "weather.location_cache"
+
+
+
+
+              # Default locations
+
+              locations_json: >
+
+
+                [
+
+                  "Chicago, IL",
+
+                  "Austin, TX",
+
+                  {
+
+                    "lat": 37.7749,
+
+                    "lon": -122.4194
+
+                  },
+
+                  {
+
+                    "lat": 40.7128,
+
+                    "lon": -74.0060
+
+                  }
+
+                ]
+
+
+
+
+              # Maximum documents per source
+
+              alert_limit: "50"
+
+              forecast_limit: "50"
+
